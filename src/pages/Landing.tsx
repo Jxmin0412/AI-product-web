@@ -15,9 +15,12 @@ import {
   Sparkles,
   Play,
   ChevronRight,
+  LogIn,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Landing() {
+  const { isAuthenticated, user } = useAuth();
   return (
     <div className="min-h-screen overflow-hidden">
       {/* Hero Section */}
@@ -57,25 +60,53 @@ export default function Landing() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link to="/dashboard/user">
-                <Button
-                  size="lg"
-                  className="h-14 px-8 text-lg font-medium rounded-full gap-2 glow hover:scale-105 transition-transform"
-                >
-                  Get Started Free
-                  <ArrowRight className="h-5 w-5" />
-                </Button>
-              </Link>
-              <Link to="/dashboard/business">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="h-14 px-8 text-lg font-medium rounded-full gap-2 bg-white/50 dark:bg-white/5 backdrop-blur-sm hover:scale-105 transition-transform"
-                >
-                  <Play className="h-5 w-5" />
-                  Watch Demo
-                </Button>
-              </Link>
+              {isAuthenticated ? (
+                /* Logged In - Show Dashboard buttons */
+                <>
+                  <Link to="/dashboard/user">
+                    <Button
+                      size="lg"
+                      className="h-14 px-8 text-lg font-medium rounded-full gap-2 glow hover:scale-105 transition-transform"
+                    >
+                      <Search className="h-5 w-5" />
+                      Search Products
+                    </Button>
+                  </Link>
+                  <Link to="/dashboard/business">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="h-14 px-8 text-lg font-medium rounded-full gap-2 bg-white/50 dark:bg-white/5 backdrop-blur-sm hover:scale-105 transition-transform"
+                    >
+                      <BarChart3 className="h-5 w-5" />
+                      View Analytics
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                /* Not Logged In - Show Get Started / Login buttons */
+                <>
+                  <Link to="/signup">
+                    <Button
+                      size="lg"
+                      className="h-14 px-8 text-lg font-medium rounded-full gap-2 glow hover:scale-105 transition-transform"
+                    >
+                      Get Started Free
+                      <ArrowRight className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                  <Link to="/login">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="h-14 px-8 text-lg font-medium rounded-full gap-2 bg-white/50 dark:bg-white/5 backdrop-blur-sm hover:scale-105 transition-transform"
+                    >
+                      <LogIn className="h-5 w-5" />
+                      Login
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
 
             {/* Stats */}
@@ -298,9 +329,9 @@ export default function Landing() {
               </div>
 
               <div className="mt-12">
-                <Link to="/dashboard/user">
+                <Link to={isAuthenticated ? "/dashboard/user" : "/signup"}>
                   <Button size="lg" className="h-14 px-8 rounded-full gap-2">
-                    Start Your Free Trial
+                    {isAuthenticated ? "Go to Dashboard" : "Start Your Free Trial"}
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                 </Link>
@@ -378,25 +409,51 @@ export default function Landing() {
               Join hundreds of businesses using AI to drive revenue growth
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/dashboard/user">
-                <Button
-                  size="lg"
-                  className="h-14 px-8 text-lg rounded-full gap-2 glow hover:scale-105 transition-transform"
-                >
-                  <Search className="h-5 w-5" />
-                  Try Product Search
-                </Button>
-              </Link>
-              <Link to="/dashboard/business">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="h-14 px-8 text-lg rounded-full gap-2 hover:scale-105 transition-transform"
-                >
-                  <BarChart3 className="h-5 w-5" />
-                  View Analytics
-                </Button>
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <Link to="/dashboard/user">
+                    <Button
+                      size="lg"
+                      className="h-14 px-8 text-lg rounded-full gap-2 glow hover:scale-105 transition-transform"
+                    >
+                      <Search className="h-5 w-5" />
+                      Search Products
+                    </Button>
+                  </Link>
+                  <Link to="/dashboard/business">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="h-14 px-8 text-lg rounded-full gap-2 hover:scale-105 transition-transform"
+                    >
+                      <BarChart3 className="h-5 w-5" />
+                      View Analytics
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/signup">
+                    <Button
+                      size="lg"
+                      className="h-14 px-8 text-lg rounded-full gap-2 glow hover:scale-105 transition-transform"
+                    >
+                      Get Started Free
+                      <ArrowRight className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                  <Link to="/login">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="h-14 px-8 text-lg rounded-full gap-2 hover:scale-105 transition-transform"
+                    >
+                      <LogIn className="h-5 w-5" />
+                      Login to Continue
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

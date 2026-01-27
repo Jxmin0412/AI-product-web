@@ -1,4 +1,3 @@
-import { mockBusinessMetrics, mockTrendData } from '../data/mockData';
 import type { BusinessMetric } from '../types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,11 +23,32 @@ import {
   Calendar,
   ArrowUpRight,
   ArrowDownRight,
-  Sparkles
+  Sparkles,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+
+// Demo data for visualization purposes
+const demoBusinessMetrics: BusinessMetric[] = [
+  { label: 'Total Searches', value: '24,521', change: 12.5, trend: 'up' },
+  { label: 'Price Matches', value: '18,234', change: 8.2, trend: 'up' },
+  { label: 'Avg. Savings', value: '$127.50', change: -2.1, trend: 'down' },
+  { label: 'User Satisfaction', value: '4.8/5', change: 0.3, trend: 'up' },
+];
+
+const demoTrendData = [
+  { month: 'Jan', avgPrice: 850, searches: 2100 },
+  { month: 'Feb', avgPrice: 820, searches: 2300 },
+  { month: 'Mar', avgPrice: 780, searches: 2500 },
+  { month: 'Apr', avgPrice: 800, searches: 2400 },
+  { month: 'May', avgPrice: 750, searches: 2800 },
+  { month: 'Jun', avgPrice: 720, searches: 3000 },
+];
 
 export default function BusinessDashboard() {
+  const { user } = useAuth();
+
   return (
     <div className="min-h-screen mesh-gradient">
       {/* Hero Header */}
@@ -44,10 +64,10 @@ export default function BusinessDashboard() {
                 Analytics
               </Badge>
               <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                Business <span className="gradient-text">Insights</span>
+                Welcome, <span className="gradient-text">{user?.first_name || 'User'}</span>
               </h1>
               <p className="text-xl text-muted-foreground">
-                Real-time metrics and competitive intelligence at your fingertips.
+                Business insights and competitive intelligence dashboard.
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -65,9 +85,20 @@ export default function BusinessDashboard() {
       </div>
 
       <div className="container mx-auto px-4 pb-16 space-y-8">
+        {/* Demo Data Notice */}
+        <div className="flex items-center gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <div>
+            <span className="font-medium">Demo Mode:</span>{' '}
+            <span className="text-amber-600 dark:text-amber-400">
+              The analytics shown below are sample data for demonstration purposes. Real-time analytics will be available when the backend analytics API is integrated.
+            </span>
+          </div>
+        </div>
+
         {/* Key Metrics */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 -mt-4">
-          {mockBusinessMetrics.map((metric, index) => (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {demoBusinessMetrics.map((metric, index) => (
             <MetricCard key={index} metric={metric} index={index} />
           ))}
         </div>
@@ -79,7 +110,7 @@ export default function BusinessDashboard() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg font-semibold mb-1">Price Trends</h3>
-                <p className="text-sm text-muted-foreground">Average prices over time</p>
+                <p className="text-sm text-muted-foreground">Average prices over time (demo)</p>
               </div>
               <Badge className="rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 border-0 gap-1">
                 <TrendingDown className="h-3 w-3" />
@@ -87,7 +118,7 @@ export default function BusinessDashboard() {
               </Badge>
             </div>
             <div className="h-[200px] flex items-end gap-3">
-              {mockTrendData.map((data, index) => (
+              {demoTrendData.map((data, index) => (
                 <div key={index} className="flex-1 flex flex-col items-center gap-2 group">
                   <div
                     className="w-full bg-gradient-to-t from-violet-500 to-fuchsia-400 rounded-xl group-hover:from-violet-400 group-hover:to-fuchsia-300 transition-colors cursor-pointer relative overflow-hidden"
@@ -106,7 +137,7 @@ export default function BusinessDashboard() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg font-semibold mb-1">Search Volume</h3>
-                <p className="text-sm text-muted-foreground">User engagement trends</p>
+                <p className="text-sm text-muted-foreground">User engagement trends (demo)</p>
               </div>
               <Badge className="rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 border-0 gap-1">
                 <TrendingUp className="h-3 w-3" />
@@ -114,7 +145,7 @@ export default function BusinessDashboard() {
               </Badge>
             </div>
             <div className="h-[200px] flex items-end gap-3">
-              {mockTrendData.map((data, index) => (
+              {demoTrendData.map((data, index) => (
                 <div key={index} className="flex-1 flex flex-col items-center gap-2 group">
                   <div
                     className="w-full bg-gradient-to-t from-cyan-500 to-blue-400 rounded-xl group-hover:from-cyan-400 group-hover:to-blue-300 transition-colors cursor-pointer relative overflow-hidden"
@@ -135,7 +166,7 @@ export default function BusinessDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold mb-1">Competitor Analysis</h3>
-                <p className="text-sm text-muted-foreground">Market share and positioning</p>
+                <p className="text-sm text-muted-foreground">Market share and positioning (demo data)</p>
               </div>
               <Button variant="ghost" className="rounded-full">View All</Button>
             </div>
@@ -154,9 +185,9 @@ export default function BusinessDashboard() {
             <TableBody>
               {[
                 { name: 'Amazon', share: 45, gradient: 'from-violet-500 to-purple-500', position: 'Competitive', rating: '4.2', coverage: 'High', trend: '+2.3%', up: true },
-                { name: 'Best Buy', share: 25, gradient: 'from-fuchsia-500 to-pink-500', position: 'Premium', rating: '4.1', coverage: 'Medium', trend: '-1.1%', up: false },
-                { name: 'Newegg', share: 15, gradient: 'from-cyan-500 to-blue-500', position: 'Variable', rating: '3.9', coverage: 'Medium', trend: '+0.8%', up: true },
-                { name: 'Others', share: 15, gradient: 'from-gray-400 to-gray-500', position: 'Mixed', rating: '3.7', coverage: 'Low', trend: '0.0%', up: null },
+                { name: 'Flipkart', share: 30, gradient: 'from-fuchsia-500 to-pink-500', position: 'Value', rating: '4.1', coverage: 'High', trend: '+1.8%', up: true },
+                { name: 'Myntra', share: 12, gradient: 'from-cyan-500 to-blue-500', position: 'Premium', rating: '3.9', coverage: 'Medium', trend: '+0.8%', up: true },
+                { name: 'Others', share: 13, gradient: 'from-gray-400 to-gray-500', position: 'Mixed', rating: '3.7', coverage: 'Low', trend: '0.0%', up: null },
               ].map((item, i) => (
                 <TableRow key={i} className="group hover:bg-muted/30 transition-colors">
                   <TableCell className="font-medium">{item.name}</TableCell>
@@ -210,7 +241,7 @@ export default function BusinessDashboard() {
           {/* Customer Journey */}
           <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 p-6 shadow-xl">
             <h3 className="text-lg font-semibold mb-1">Customer Journey</h3>
-            <p className="text-sm text-muted-foreground mb-6">Time and conversion by stage</p>
+            <p className="text-sm text-muted-foreground mb-6">Time and conversion by stage (demo)</p>
 
             <div className="space-y-5">
               {[
@@ -243,7 +274,7 @@ export default function BusinessDashboard() {
           {/* Sentiment Analysis */}
           <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 p-6 shadow-xl">
             <h3 className="text-lg font-semibold mb-1">Sentiment Analysis</h3>
-            <p className="text-sm text-muted-foreground mb-6">Customer review breakdown</p>
+            <p className="text-sm text-muted-foreground mb-6">Customer review breakdown (demo)</p>
 
             <div className="space-y-5 mb-6">
               {[

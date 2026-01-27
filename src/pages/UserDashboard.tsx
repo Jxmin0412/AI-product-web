@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { mockProducts, mockPriceComparisons, mockRecommendations } from '../data/mockData';
-import type { Product } from '../types';
+import { useState, useEffect } from 'react';
+import { productsApi, type ProductResponse, type PlatformComparison, type SmartComparisonResponse } from '../api/products.api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -31,34 +30,85 @@ import {
   TrendingDown,
   SlidersHorizontal,
   ArrowRight,
-  History
+  History,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LoginSessionsTable } from '@/components/LoginSessionsTable';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function UserDashboard() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [searchResults, setSearchResults] = useState<ProductResponse[]>([]);
+  const [recommendations, setRecommendations] = useState<ProductResponse[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(true);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [showPriceComparison, setShowPriceComparison] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<ProductResponse | null>(null);
+  const [comparisonData, setComparisonData] = useState<SmartComparisonResponse | null>(null);
+  const [isLoadingComparison, setIsLoadingComparison] = useState(false);
 
-  const categories = ['All', 'Laptops', 'Audio', 'Smartphones', 'Electronics'];
+  const categories = ['All', 'Laptops', 'Audio', 'Smartphones', 'Electronics', 'Home', 'Fashion'];
 
-  const handleSearch = () => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      return;
+  // Load recommendations on mount
+  useEffect(() => {
+    loadRecommendations();
+  }, [selectedCategory]);
+
+  const loadRecommendations = async () => {
+    setIsLoadingRecommendations(true);
+    try {
+      const data = await productsApi.getRecommendations(selectedCategory, 6);
+      setRecommendations(data);
+    } catch (error) {
+      console.error('Failed to load recommendations:', error);
+      setRecommendations([]);
+    } finally {
+      setIsLoadingRecommendations(false);
     }
-    const filtered = mockProducts.filter(product =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setSearchResults(filtered);
   };
 
-  const filteredProducts = selectedCategory === 'All'
-    ? mockProducts
-    : mockProducts.filter(p => p.category === selectedCategory);
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setSearchError(null);
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError(null);
+
+    try {
+      const response = await productsApi.search({ query: searchQuery });
+      setSearchResults(response.allResults);
+    } catch (error) {
+      console.error('Search failed:', error);
+      setSearchError('Search failed. Please try again.');
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleComparePrice = async (product: ProductResponse) => {
+    setSelectedProduct(product);
+    setShowPriceComparison(true);
+    setIsLoadingComparison(true);
+    setComparisonData(null);
+
+    try {
+      const data = await productsApi.smartCompare(product.name);
+      setComparisonData(data);
+    } catch (error) {
+      console.error('Comparison failed:', error);
+    } finally {
+      setIsLoadingComparison(false);
+    }
+  };
 
   return (
     <div className="min-h-screen mesh-gradient">
@@ -74,7 +124,7 @@ export default function UserDashboard() {
               Product Search
             </Badge>
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Find the <span className="gradient-text">best deals</span>
+              Welcome back, <span className="gradient-text">{user?.first_name || 'User'}</span>
             </h1>
             <p className="text-xl text-muted-foreground">
               Compare prices across platforms and save money with AI-powered recommendations.
@@ -98,15 +148,29 @@ export default function UserDashboard() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                   className="pl-12 h-14 text-lg rounded-2xl border-gray-200 dark:border-gray-700"
+                  disabled={isSearching}
                 />
               </div>
               <div className="flex gap-3">
                 <Button variant="outline" size="icon" className="h-14 w-14 rounded-2xl">
                   <SlidersHorizontal className="h-5 w-5" />
                 </Button>
-                <Button onClick={handleSearch} className="h-14 px-8 rounded-2xl text-base gap-2">
-                  Search
-                  <ArrowRight className="h-4 w-4" />
+                <Button
+                  onClick={handleSearch}
+                  className="h-14 px-8 rounded-2xl text-base gap-2"
+                  disabled={isSearching}
+                >
+                  {isSearching ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      Search
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -131,6 +195,14 @@ export default function UserDashboard() {
           </div>
         </div>
 
+        {/* Search Error */}
+        {searchError && (
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300">
+            <AlertCircle className="h-5 w-5" />
+            <span>{searchError}</span>
+          </div>
+        )}
+
         {/* Search Results */}
         {searchResults.length > 0 && (
           <section>
@@ -138,9 +210,25 @@ export default function UserDashboard() {
               <h2 className="text-2xl font-bold">Search Results</h2>
               <Badge variant="secondary" className="rounded-full px-4">{searchResults.length} found</Badge>
             </div>
+
+            {/* Demo data notice */}
+            {searchResults.some(p => p.platform?.toLowerCase().includes('demo') || p.name?.includes('[DEMO]')) && (
+              <div className="flex items-center gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 mb-6">
+                <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                <div>
+                  <span className="font-medium">Demo Data Shown: </span>
+                  <span>Real-time scraping is currently unavailable due to website restrictions. Showing sample data for demonstration.</span>
+                </div>
+              </div>
+            )}
+
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {searchResults.map(product => (
-                <ProductCard key={product.id} product={product} onComparePrice={() => setShowPriceComparison(true)} />
+              {searchResults.map((product, index) => (
+                <ProductCard
+                  key={product.id || index}
+                  product={product}
+                  onComparePrice={() => handleComparePrice(product)}
+                />
               ))}
             </div>
           </section>
@@ -154,31 +242,29 @@ export default function UserDashboard() {
             </div>
             <h2 className="text-2xl font-bold">AI Picks for You</h2>
           </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            {mockRecommendations.map(product => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                isRecommendation
-                onComparePrice={() => setShowPriceComparison(true)}
-              />
-            ))}
-          </div>
-        </section>
 
-        {/* All Products */}
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">
-              {selectedCategory === 'All' ? 'All Products' : selectedCategory}
-            </h2>
-            <Badge variant="outline" className="rounded-full px-4">{filteredProducts.length} items</Badge>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredProducts.map(product => (
-              <ProductCard key={product.id} product={product} onComparePrice={() => setShowPriceComparison(true)} />
-            ))}
-          </div>
+          {isLoadingRecommendations ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+              <span className="ml-3 text-muted-foreground">Loading recommendations...</span>
+            </div>
+          ) : recommendations.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {recommendations.map((product, index) => (
+                <ProductCard
+                  key={product.id || index}
+                  product={product}
+                  isRecommendation
+                  onComparePrice={() => handleComparePrice(product)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No recommendations available. Try searching for products!</p>
+            </div>
+          )}
         </section>
 
         {/* Login Sessions */}
@@ -194,20 +280,34 @@ export default function UserDashboard() {
           </div>
         </section>
 
-        <PriceComparisonDialog open={showPriceComparison} onOpenChange={setShowPriceComparison} />
+        <PriceComparisonDialog
+          open={showPriceComparison}
+          onOpenChange={setShowPriceComparison}
+          product={selectedProduct}
+          comparisonData={comparisonData}
+          isLoading={isLoadingComparison}
+        />
       </div>
     </div>
   );
 }
 
 function ProductCard({ product, isRecommendation = false, onComparePrice }: {
-  product: Product;
+  product: ProductResponse;
   isRecommendation?: boolean;
   onComparePrice: () => void;
 }) {
-  const discount = product.originalPrice
+  const discount = product.originalPrice && product.price
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-    : 0;
+    : product.discountPercent || 0;
+
+  const isInStock = product.availability?.toLowerCase().includes('in stock') ||
+                    product.availability?.toLowerCase().includes('available') ||
+                    product.availability === 'Unknown';
+
+  const isDemo = product.platform?.toLowerCase().includes('demo') ||
+                 product.name?.includes('[DEMO]') ||
+                 product.availability === 'Demo Data';
 
   return (
     <div className={cn(
@@ -215,15 +315,37 @@ function ProductCard({ product, isRecommendation = false, onComparePrice }: {
       isRecommendation && "ring-2 ring-violet-500/20"
     )}>
       {/* Image Area */}
-      <div className="relative h-48 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
-        <Package className="h-16 w-16 text-gray-300 dark:text-gray-600" />
+      <div className="relative h-48 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center overflow-hidden">
+        {product.image ? (
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-full object-contain p-4"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+              (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+            }}
+          />
+        ) : null}
+        <Package className={cn("h-16 w-16 text-gray-300 dark:text-gray-600", product.image && "hidden")} />
 
         {/* Badges */}
         <div className="absolute top-4 left-4 flex flex-col gap-2">
-          {isRecommendation && (
+          {isDemo && (
+            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 border-0 gap-1 shadow-lg">
+              <AlertCircle className="h-3 w-3" />
+              Demo Data
+            </Badge>
+          )}
+          {isRecommendation && !isDemo && (
             <Badge className="bg-gradient-to-r from-violet-500 to-fuchsia-500 border-0 gap-1 shadow-lg">
               <Sparkles className="h-3 w-3" />
               AI Pick
+            </Badge>
+          )}
+          {product.matchType && !isDemo && (
+            <Badge variant="secondary" className="text-xs">
+              {product.matchType}
             </Badge>
           )}
         </div>
@@ -250,133 +372,226 @@ function ProductCard({ product, isRecommendation = false, onComparePrice }: {
           <h3 className="font-semibold line-clamp-2 leading-snug">{product.name}</h3>
         </div>
 
-        <p className="text-sm text-muted-foreground line-clamp-1 mb-4">{product.description}</p>
+        {product.description && (
+          <p className="text-sm text-muted-foreground line-clamp-1 mb-4">{product.description}</p>
+        )}
 
         {/* Price */}
         <div className="flex items-baseline gap-2 mb-4">
-          <span className="text-2xl font-bold">${product.price}</span>
-          {product.originalPrice && (
-            <span className="text-sm text-muted-foreground line-through">${product.originalPrice}</span>
+          <span className="text-2xl font-bold">
+            {product.price ? `₹${product.price.toLocaleString()}` : 'Price N/A'}
+          </span>
+          {product.originalPrice && product.originalPrice > product.price && (
+            <span className="text-sm text-muted-foreground line-through">₹{product.originalPrice.toLocaleString()}</span>
           )}
         </div>
 
         {/* Meta */}
         <div className="flex items-center justify-between text-sm mb-5">
           <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-            <span className="font-medium text-foreground">{product.rating}</span>
-            <span>({product.reviews})</span>
+            {product.rating ? (
+              <>
+                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                <span className="font-medium text-foreground">{product.rating.toFixed(1)}</span>
+                {product.reviews && <span>({product.reviews.toLocaleString()})</span>}
+              </>
+            ) : (
+              <span className="text-xs">No ratings</span>
+            )}
           </div>
           <Badge
             variant="outline"
             className={cn(
               "rounded-full",
-              product.inStock ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-gray-500"
+              isInStock ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-gray-500"
             )}
           >
-            {product.inStock ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
-            {product.inStock ? 'In Stock' : 'Out of Stock'}
+            {isInStock ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
+            {isInStock ? 'In Stock' : product.availability || 'Unknown'}
           </Badge>
         </div>
 
         <div className="text-xs text-muted-foreground mb-4">
           via <span className="font-medium text-foreground">{product.platform}</span>
+          {product.brand && <span> | {product.brand}</span>}
         </div>
 
-        {/* Action */}
-        <Button className="w-full h-11 rounded-2xl gap-2" onClick={onComparePrice}>
-          Compare Prices
-          <ArrowRight className="h-4 w-4" />
-        </Button>
+        {/* Recommendation Reason */}
+        {isRecommendation && product.reason && (
+          <p className="text-xs text-violet-600 dark:text-violet-400 mb-4 italic">
+            "{product.reason}"
+          </p>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          <Button className="flex-1 h-11 rounded-2xl gap-2" onClick={onComparePrice}>
+            Compare Prices
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+          {product.url ? (
+            <Button variant="outline" size="icon" className="h-11 w-11 rounded-2xl" asChild>
+              <a href={product.url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
+          ) : (
+            <Button variant="outline" size="icon" className="h-11 w-11 rounded-2xl opacity-50 cursor-not-allowed" disabled>
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function PriceComparisonDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const comparison = mockPriceComparisons[0];
-
+function PriceComparisonDialog({
+  open,
+  onOpenChange,
+  product,
+  comparisonData,
+  isLoading
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  product: ProductResponse | null;
+  comparisonData: SmartComparisonResponse | null;
+  isLoading: boolean;
+}) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl rounded-3xl">
         <DialogHeader>
           <DialogTitle className="text-2xl">Price Comparison</DialogTitle>
           <DialogDescription>
-            Find the best deal across all platforms
+            {product ? `Comparing prices for: ${product.name}` : 'Find the best deal across all platforms'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-2xl border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead>Platform</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Shipping</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Rating</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {comparison.platforms.map((platform, index) => {
-                const isLowest = index === 0;
-                return (
-                  <TableRow key={index} className={isLowest ? "bg-emerald-50/50 dark:bg-emerald-950/20" : ""}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {platform.name}
-                        {isLowest && (
-                          <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 border-0 text-xs">
-                            Best
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>${platform.price}</TableCell>
-                    <TableCell>
-                      {platform.shipping === 0 ? (
-                        <span className="text-emerald-600 font-medium">Free</span>
-                      ) : `$${platform.shipping}`}
-                    </TableCell>
-                    <TableCell className="font-bold">${platform.price + platform.shipping}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                        {platform.rating}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="rounded-full">
-                        {platform.availability}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button size="sm" variant="ghost" className="gap-1 rounded-full">
-                        Visit <ExternalLink className="h-3 w-3" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30 border border-emerald-200 dark:border-emerald-800">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-emerald-500 text-white">
-              <TrendingDown className="h-4 w-4" />
-            </div>
-            <div>
-              <h4 className="font-semibold text-emerald-800 dark:text-emerald-200 mb-1">Best Deal Found!</h4>
-              <p className="text-sm text-emerald-700 dark:text-emerald-300">
-                Amazon offers the lowest total price with free shipping. You'll save $50 compared to other platforms.
-              </p>
-            </div>
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-violet-500 mb-4" />
+            <p className="text-muted-foreground">Fetching prices from multiple platforms...</p>
           </div>
-        </div>
+        ) : comparisonData && comparisonData.comparisons.length > 0 ? (
+          <>
+            <div className="rounded-2xl border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead>Platform</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Rating</TableHead>
+                    <TableHead>Value Score</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {comparisonData.comparisons.map((platform, index) => (
+                    <TableRow
+                      key={index}
+                      className={platform.isBestDeal ? "bg-emerald-50/50 dark:bg-emerald-950/20" : ""}
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {platform.platform}
+                          {platform.isBestDeal && (
+                            <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 border-0 text-xs">
+                              Best
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-bold">₹{platform.price.toLocaleString()}</span>
+                          {platform.originalPrice && platform.originalPrice > platform.price && (
+                            <span className="text-xs text-muted-foreground line-through">
+                              ₹{platform.originalPrice.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {platform.rating ? (
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                            {platform.rating.toFixed(1)}
+                            {platform.reviewCount && (
+                              <span className="text-xs text-muted-foreground">
+                                ({platform.reviewCount.toLocaleString()})
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">N/A</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full"
+                              style={{ width: `${platform.valueScore}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium">{platform.valueScore.toFixed(0)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="rounded-full">
+                          {platform.availability || 'Unknown'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {platform.productUrl && (
+                          <Button size="sm" variant="ghost" className="gap-1 rounded-full" asChild>
+                            <a href={platform.productUrl} target="_blank" rel="noopener noreferrer">
+                              Visit <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {comparisonData.bestDeal && (
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30 border border-emerald-200 dark:border-emerald-800">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-emerald-500 text-white">
+                    <TrendingDown className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-emerald-800 dark:text-emerald-200 mb-1">Best Deal Found!</h4>
+                    <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                      {comparisonData.recommendation || `${comparisonData.bestDeal.platform} offers the best value at ₹${comparisonData.bestDeal.price.toLocaleString()}.`}
+                    </p>
+                    {comparisonData.priceRange && (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2">
+                        Price range: ₹{comparisonData.priceRange.min.toLocaleString()} - ₹{comparisonData.priceRange.max.toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Package className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">
+              No comparison data available for this product.
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Try searching for a different product.
+            </p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

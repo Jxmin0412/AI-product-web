@@ -11,4 +11,20 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'curatly.onrender.com',
+      '.onrender.com', // Allow all render.com subdomains
+    ],
+  },
+  preview: {
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'curatly.onrender.com',
+      '.onrender.com',
+    ],
+  },
 })
