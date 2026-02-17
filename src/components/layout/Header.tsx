@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, Zap, LayoutDashboard, BarChart3, Home, Users, LogOut, User, ChevronDown } from "lucide-react";
+import { Menu, Zap, LayoutDashboard, BarChart3, Home, Users, LogOut, User, ChevronDown, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -24,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 const navItems = [
   { to: "/", label: "Home", icon: Home },
   { to: "/dashboard/user", label: "Product Search", icon: LayoutDashboard },
+  { to: "/recommendations", label: "Recommendations", icon: Sparkles },
   { to: "/dashboard/business", label: "Analytics", icon: BarChart3 },
   { to: "/admin/users", label: "Users", icon: Users },
 ];

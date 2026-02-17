@@ -34,7 +34,6 @@ class ApiClient {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...fetchOptions,
       headers,
-      credentials: 'include', // Important for cookies
     });
 
     if (!response.ok) {

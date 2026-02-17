@@ -8,6 +8,7 @@ import Landing from "./pages/Landing";
 import UserDashboard from "./pages/UserDashboard";
 import BusinessDashboard from "./pages/BusinessDashboard";
 import AdminUsers from "./pages/AdminUsers";
+import Recommendations from "./pages/Recommendations";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 
@@ -33,6 +34,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute>
                 <UserDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recommendations"
+            element={
+              <ProtectedRoute>
+                <Recommendations />
               </ProtectedRoute>
             }
           />

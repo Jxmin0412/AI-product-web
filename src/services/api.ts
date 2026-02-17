@@ -191,7 +191,7 @@ export interface HealthStatus {
  * Check API health
  */
 export async function checkHealth(): Promise<HealthStatus> {
-  return fetch('http://localhost:8000/health').then(res => res.json());
+  return fetch('/health').then(res => res.json());
 }
 
 export default {

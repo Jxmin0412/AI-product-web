@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Users, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Users, CheckCircle2, XCircle, Loader2, Shield, User } from 'lucide-react';
 import { useUsers } from '@/hooks/useAuth';
 
 export default function AdminUsers() {
@@ -75,6 +75,7 @@ export default function AdminUsers() {
                     <TableRow className="bg-muted/50">
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Created At</TableHead>
                       <TableHead>Last Login</TableHead>
@@ -87,6 +88,23 @@ export default function AdminUsers() {
                           {user.first_name} {user.last_name}
                         </TableCell>
                         <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              user.role === 'admin'
+                                ? 'text-violet-600 border-violet-200 bg-violet-50 dark:bg-violet-950/30'
+                                : 'text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/30'
+                            }
+                          >
+                            {user.role === 'admin' ? (
+                              <Shield className="h-3 w-3 mr-1" />
+                            ) : (
+                              <User className="h-3 w-3 mr-1" />
+                            )}
+                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          </Badge>
+                        </TableCell>
                         <TableCell>
                           <Badge
                             variant="outline"
