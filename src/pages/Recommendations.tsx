@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { productsApi, type ProductResponse, type SmartComparisonResponse } from '../api/products.api';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -20,6 +21,7 @@ import {
 import {
   Star,
   Sparkles,
+  Users,
   ExternalLink,
   Bookmark,
   CheckCircle2,
@@ -28,13 +30,14 @@ import {
   TrendingDown,
   ArrowRight,
   Loader2,
-  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Recommendations() {
+  const { isAuthenticated } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [recommendations, setRecommendations] = useState<ProductResponse[]>([]);
+  const [forYouLabel, setForYouLabel] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showPriceComparison, setShowPriceComparison] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductResponse | null>(null);
@@ -49,9 +52,19 @@ export default function Recommendations() {
 
   const loadRecommendations = async () => {
     setIsLoading(true);
+    setForYouLabel(null);
     try {
-      const data = await productsApi.getRecommendations(selectedCategory, 12);
-      setRecommendations(data);
+      if (selectedCategory === 'All' && isAuthenticated) {
+        // Fetch ALL saved products (own + other users) from DB
+        const data = await productsApi.getForYouRecommendations(30, true);
+        setRecommendations(data.recommendations);
+        if (data.source === 'other_users') {
+          setForYouLabel(data.label);
+        }
+      } else {
+        const data = await productsApi.getRecommendations(selectedCategory, 20);
+        setRecommendations(data);
+      }
     } catch (error) {
       console.error('Failed to load recommendations:', error);
       setRecommendations([]);
@@ -107,7 +120,7 @@ export default function Recommendations() {
               key={category}
               onClick={() => setSelectedCategory(category)}
               className={cn(
-                "px-5 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+                "px-5 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-1.5",
                 selectedCategory === category
                   ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg"
                   : "bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:bg-gray-200 dark:hover:bg-gray-700"
@@ -127,7 +140,17 @@ export default function Recommendations() {
         ) : recommendations.length > 0 ? (
           <>
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">{selectedCategory === 'All' ? 'All Categories' : selectedCategory}</h2>
+              <div>
+                <h2 className="text-xl font-semibold">
+                  {selectedCategory === 'All' ? 'All Categories' : selectedCategory}
+                </h2>
+                {forYouLabel && (
+                  <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5" />
+                    {forYouLabel}
+                  </p>
+                )}
+              </div>
               <Badge variant="secondary" className="rounded-full px-4">{recommendations.length} picks</Badge>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

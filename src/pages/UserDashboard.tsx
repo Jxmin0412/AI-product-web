@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { productsApi, type ProductResponse, type PlatformComparison, type SmartComparisonResponse } from '../api/products.api';
+import { productsApi, type ProductResponse, type SmartComparisonResponse } from '../api/products.api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';

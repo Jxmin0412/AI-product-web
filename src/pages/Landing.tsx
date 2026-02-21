@@ -13,14 +13,13 @@ import {
   Layers,
   CheckCircle2,
   Sparkles,
-  Play,
   ChevronRight,
   LogIn,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Landing() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   return (
     <div className="min-h-screen overflow-hidden">
       {/* Hero Section */}

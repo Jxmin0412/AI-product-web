@@ -134,6 +134,13 @@ export interface PlatformsResponse {
   platforms: SupportedPlatform[];
 }
 
+export interface ForYouResponse {
+  source: 'other_users' | 'trending';
+  category: string | null;
+  label: string;
+  recommendations: ProductResponse[];
+}
+
 // ============================================
 // API Functions
 // ============================================
@@ -163,6 +170,18 @@ export const productsApi = {
     }
     params.append('limit', limit.toString());
     return apiClient.get<ProductResponse[]>(`/consumer/recommendations?${params.toString()}`);
+  },
+
+  /**
+   * Get personalized "For You" recommendations based on other users' searches
+   */
+  getForYouRecommendations: (limit: number = 12, includeOwn: boolean = false): Promise<ForYouResponse> => {
+    const params = new URLSearchParams();
+    params.append('limit', limit.toString());
+    if (includeOwn) {
+      params.append('include_own', 'true');
+    }
+    return apiClient.get<ForYouResponse>(`/consumer/recommendations/for-you?${params.toString()}`);
   },
 
   /**

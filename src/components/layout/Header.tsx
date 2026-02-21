@@ -26,13 +26,17 @@ const navItems = [
   { to: "/dashboard/user", label: "Product Search", icon: LayoutDashboard },
   { to: "/recommendations", label: "Recommendations", icon: Sparkles },
   { to: "/dashboard/business", label: "Analytics", icon: BarChart3 },
-  { to: "/admin/users", label: "Users", icon: Users },
+  { to: "/admin/users", label: "Users", icon: Users, role: "admin" as const },
 ];
 
 function Header() {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
+
+  const visibleNavItems = navItems.filter(
+    (item) => !item.role || item.role === user?.role,
+  );
 
   const handleLogout = async () => {
     await logout();
@@ -69,7 +73,7 @@ function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const isActive = location.pathname === item.to;
               return (
                 <Link key={item.to} to={item.to}>
@@ -190,7 +194,7 @@ function Header() {
               )}
 
               <nav className="flex flex-col gap-2">
-                {navItems.map((item) => {
+                {visibleNavItems.map((item) => {
                   const isActive = location.pathname === item.to;
                   return (
                     <Link

@@ -53,7 +53,7 @@ export class AuthService {
    */
   async initializeAuth(): Promise<User | null> {
     try {
-      const tokenResponse = await this.refreshToken();
+      await this.refreshToken();
       const user = await authApi.getMe();
       return user;
     } catch {
