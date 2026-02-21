@@ -1,4 +1,15 @@
-import type { BusinessMetric } from '../types';
+import { useState, useEffect } from 'react';
+import type {
+  BusinessMetric,
+  BusinessDashboardResponse,
+  CategoryBreakdown,
+  TopSearchTerm,
+  CompetitorData,
+  UserActivityItem,
+  PriceInsight,
+  DailySearchVolume,
+} from '../types';
+import { businessApi } from '../api/business.api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,43 +22,94 @@ import {
 } from '@/components/ui/table';
 import {
   BarChart3,
-  TrendingUp,
-  TrendingDown,
   Minus,
-  Clock,
-  ShoppingCart,
-  ThumbsUp,
-  ThumbsDown,
-  Search,
-  Download,
   Calendar,
   ArrowUpRight,
   ArrowDownRight,
-  Sparkles,
-  AlertCircle
+  DollarSign,
+  Loader2,
+  AlertCircle,
+  Users,
+  Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  BarChart,
+  Bar,
+} from 'recharts';
 
-// Demo data for visualization purposes
-const demoBusinessMetrics: BusinessMetric[] = [
-  { label: 'Total Searches', value: '24,521', change: 12.5, trend: 'up' },
-  { label: 'Price Matches', value: '18,234', change: 8.2, trend: 'up' },
-  { label: 'Avg. Savings', value: '$127.50', change: -2.1, trend: 'down' },
-  { label: 'User Satisfaction', value: '4.8/5', change: 0.3, trend: 'up' },
-];
-
-const demoTrendData = [
-  { month: 'Jan', avgPrice: 850, searches: 2100 },
-  { month: 'Feb', avgPrice: 820, searches: 2300 },
-  { month: 'Mar', avgPrice: 780, searches: 2500 },
-  { month: 'Apr', avgPrice: 800, searches: 2400 },
-  { month: 'May', avgPrice: 750, searches: 2800 },
-  { month: 'Jun', avgPrice: 720, searches: 3000 },
+const CHART_COLORS = [
+  '#8b5cf6', '#06b6d4', '#ec4899', '#10b981',
+  '#f59e0b', '#ef4444', '#6366f1', '#14b8a6',
 ];
 
 export default function BusinessDashboard() {
   const { user } = useAuth();
+  const [data, setData] = useState<BusinessDashboardResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    businessApi
+      .getDashboardData()
+      .then((res) => {
+        if (!cancelled) setData(res);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err?.message || 'Failed to load dashboard data');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen mesh-gradient flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-violet-500" />
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen mesh-gradient flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 max-w-md text-center">
+          <AlertCircle className="h-10 w-10 text-rose-500" />
+          <p className="text-lg font-semibold">Failed to load dashboard</p>
+          <p className="text-muted-foreground">{error}</p>
+          <Button onClick={() => window.location.reload()} variant="outline" className="rounded-2xl">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return null;
 
   return (
     <div className="min-h-screen mesh-gradient">
@@ -64,10 +126,10 @@ export default function BusinessDashboard() {
                 Analytics
               </Badge>
               <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                Welcome, <span className="gradient-text">{user?.first_name || 'User'}</span>
+                Welcome, <span className="gradient-text">{user?.first_name || 'Admin'}</span>
               </h1>
               <p className="text-xl text-muted-foreground">
-                Business insights and competitive intelligence dashboard.
+                Real-time business insights from user activity.
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -75,251 +137,45 @@ export default function BusinessDashboard() {
                 <Calendar className="h-4 w-4" />
                 Last 30 days
               </Button>
-              <Button variant="outline" className="rounded-2xl gap-2 h-11">
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
             </div>
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 pb-16 space-y-8">
-        {/* Demo Data Notice */}
-        <div className="flex items-center gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <div>
-            <span className="font-medium">Demo Mode:</span>{' '}
-            <span className="text-amber-600 dark:text-amber-400">
-              The analytics shown below are sample data for demonstration purposes. Real-time analytics will be available when the backend analytics API is integrated.
-            </span>
-          </div>
-        </div>
-
         {/* Key Metrics */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {demoBusinessMetrics.map((metric, index) => (
+          {data.metrics.map((metric, index) => (
             <MetricCard key={index} metric={metric} index={index} />
           ))}
         </div>
 
-        {/* Charts Section */}
+        {/* Charts Row 1: Area Chart + Pie Chart */}
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Price Trends */}
-          <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Price Trends</h3>
-                <p className="text-sm text-muted-foreground">Average prices over time (demo)</p>
-              </div>
-              <Badge className="rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 border-0 gap-1">
-                <TrendingDown className="h-3 w-3" />
-                -8.2%
-              </Badge>
-            </div>
-            <div className="h-[200px] flex items-end gap-3">
-              {demoTrendData.map((data, index) => (
-                <div key={index} className="flex-1 flex flex-col items-center gap-2 group">
-                  <div
-                    className="w-full bg-gradient-to-t from-violet-500 to-fuchsia-400 rounded-xl group-hover:from-violet-400 group-hover:to-fuchsia-300 transition-colors cursor-pointer relative overflow-hidden"
-                    style={{ height: `${(data.avgPrice / 1000) * 160}px` }}
-                  >
-                    <div className="absolute inset-0 shimmer opacity-0 group-hover:opacity-100" />
-                  </div>
-                  <span className="text-xs text-muted-foreground font-medium">{data.month}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Search Volume */}
-          <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Search Volume</h3>
-                <p className="text-sm text-muted-foreground">User engagement trends (demo)</p>
-              </div>
-              <Badge className="rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 border-0 gap-1">
-                <TrendingUp className="h-3 w-3" />
-                +12.5%
-              </Badge>
-            </div>
-            <div className="h-[200px] flex items-end gap-3">
-              {demoTrendData.map((data, index) => (
-                <div key={index} className="flex-1 flex flex-col items-center gap-2 group">
-                  <div
-                    className="w-full bg-gradient-to-t from-cyan-500 to-blue-400 rounded-xl group-hover:from-cyan-400 group-hover:to-blue-300 transition-colors cursor-pointer relative overflow-hidden"
-                    style={{ height: `${(data.searches / 3000) * 160}px` }}
-                  >
-                    <div className="absolute inset-0 shimmer opacity-0 group-hover:opacity-100" />
-                  </div>
-                  <span className="text-xs text-muted-foreground font-medium">{data.month}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <SearchVolumeAreaChart data={data.dailySearchVolume} />
+          <CategoryPieChart categories={data.categoryBreakdown} />
         </div>
 
-        {/* Competitor Analysis */}
-        <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 overflow-hidden shadow-xl">
-          <div className="p-6 border-b border-gray-100 dark:border-white/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Competitor Analysis</h3>
-                <p className="text-sm text-muted-foreground">Market share and positioning (demo data)</p>
-              </div>
-              <Button variant="ghost" className="rounded-full">View All</Button>
-            </div>
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/30">
-                <TableHead>Platform</TableHead>
-                <TableHead>Market Share</TableHead>
-                <TableHead>Price Position</TableHead>
-                <TableHead>Rating</TableHead>
-                <TableHead>Coverage</TableHead>
-                <TableHead className="text-right">Trend</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {[
-                { name: 'Amazon', share: 45, gradient: 'from-violet-500 to-purple-500', position: 'Competitive', rating: '4.2', coverage: 'High', trend: '+2.3%', up: true },
-                { name: 'Flipkart', share: 30, gradient: 'from-fuchsia-500 to-pink-500', position: 'Value', rating: '4.1', coverage: 'High', trend: '+1.8%', up: true },
-                { name: 'Myntra', share: 12, gradient: 'from-cyan-500 to-blue-500', position: 'Premium', rating: '3.9', coverage: 'Medium', trend: '+0.8%', up: true },
-                { name: 'Others', share: 13, gradient: 'from-gray-400 to-gray-500', position: 'Mixed', rating: '3.7', coverage: 'Low', trend: '0.0%', up: null },
-              ].map((item, i) => (
-                <TableRow key={i} className="group hover:bg-muted/30 transition-colors">
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="w-32 h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                        <div
-                          className={cn("h-full rounded-full bg-gradient-to-r", item.gradient)}
-                          style={{ width: `${item.share}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium">{item.share}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="rounded-full">{item.position}</Badge>
-                  </TableCell>
-                  <TableCell>{item.rating}/5</TableCell>
-                  <TableCell>
-                    <Badge
-                      className={cn(
-                        "rounded-full border-0",
-                        item.coverage === 'High' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300" :
-                        item.coverage === 'Medium' ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" :
-                        "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                      )}
-                    >
-                      {item.coverage}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className={cn(
-                      "inline-flex items-center gap-1 font-medium",
-                      item.up === true && "text-emerald-600",
-                      item.up === false && "text-rose-500",
-                      item.up === null && "text-muted-foreground"
-                    )}>
-                      {item.up === true && <ArrowUpRight className="h-4 w-4" />}
-                      {item.up === false && <ArrowDownRight className="h-4 w-4" />}
-                      {item.trend}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {/* Charts Row 2: Top Search Terms — bar chart + ranked list */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          <TopSearchTermsBarChart terms={data.topSearchTerms} />
+          <TopSearchTermsList terms={data.topSearchTerms} />
         </div>
 
-        {/* Bottom Grid */}
+        {/* Charts Row 3: Platform Performance Bar Chart */}
+        <PlatformBarChart platforms={data.platformPerformance} />
+
+        {/* Bottom Grid: User Activity Table + Price Insights Chart */}
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Customer Journey */}
-          <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 p-6 shadow-xl">
-            <h3 className="text-lg font-semibold mb-1">Customer Journey</h3>
-            <p className="text-sm text-muted-foreground mb-6">Time and conversion by stage (demo)</p>
-
-            <div className="space-y-5">
-              {[
-                { label: 'Discovery', value: '2.3 min', icon: Search, progress: 100, gradient: 'from-violet-500 to-purple-500' },
-                { label: 'Comparison', value: '1.8 min', icon: BarChart3, progress: 78, gradient: 'from-cyan-500 to-blue-500' },
-                { label: 'Decision', value: '3.2 min', icon: Clock, progress: 65, gradient: 'from-fuchsia-500 to-pink-500' },
-                { label: 'Purchase', value: '73%', icon: ShoppingCart, progress: 73, gradient: 'from-emerald-500 to-green-500' },
-              ].map((item, i) => (
-                <div key={i} className="group">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className={cn("p-2 rounded-xl bg-gradient-to-br text-white", item.gradient)}>
-                        <item.icon className="h-4 w-4" />
-                      </div>
-                      <span className="font-medium">{item.label}</span>
-                    </div>
-                    <span className="text-sm font-semibold">{item.value}</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                    <div
-                      className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-500", item.gradient)}
-                      style={{ width: `${item.progress}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Sentiment Analysis */}
-          <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 p-6 shadow-xl">
-            <h3 className="text-lg font-semibold mb-1">Sentiment Analysis</h3>
-            <p className="text-sm text-muted-foreground mb-6">Customer review breakdown (demo)</p>
-
-            <div className="space-y-5 mb-6">
-              {[
-                { label: 'Positive', value: 68, color: 'bg-emerald-500' },
-                { label: 'Neutral', value: 22, color: 'bg-amber-500' },
-                { label: 'Negative', value: 10, color: 'bg-rose-500' },
-              ].map((item, i) => (
-                <div key={i}>
-                  <div className="flex items-center justify-between mb-2 text-sm">
-                    <span className="text-muted-foreground">{item.label}</span>
-                    <span className="font-semibold">{item.value}%</span>
-                  </div>
-                  <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                    <div className={cn("h-full rounded-full", item.color)} style={{ width: `${item.value}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-violet-50 to-fuchsia-50 dark:from-violet-950/30 dark:to-fuchsia-950/30 border border-violet-200 dark:border-violet-800">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="h-4 w-4 text-violet-500" />
-                <span className="font-semibold text-sm">Key Insights</span>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-start gap-2 text-muted-foreground">
-                  <ThumbsUp className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
-                  <span>Price competitiveness highly rated</span>
-                </div>
-                <div className="flex items-start gap-2 text-muted-foreground">
-                  <ThumbsUp className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
-                  <span>AI recommendations praised</span>
-                </div>
-                <div className="flex items-start gap-2 text-muted-foreground">
-                  <ThumbsDown className="h-4 w-4 text-rose-500 mt-0.5 shrink-0" />
-                  <span>Shipping speed concerns noted</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <UserActivityTable users={data.userActivity} />
+          <PriceInsightsChart insights={data.priceInsights} />
         </div>
       </div>
     </div>
   );
 }
+
+/* ========== Sub-components ========== */
 
 function MetricCard({ metric, index }: { metric: BusinessMetric; index: number }) {
   const isUp = metric.trend === 'up';
@@ -334,24 +190,390 @@ function MetricCard({ metric, index }: { metric: BusinessMetric; index: number }
 
   return (
     <div className="relative group rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 p-6 shadow-xl hover-lift overflow-hidden">
-      {/* Gradient accent */}
-      <div className={cn("absolute top-0 left-0 right-0 h-1 bg-gradient-to-r", gradients[index % gradients.length])} />
-
+      <div className={cn('absolute top-0 left-0 right-0 h-1 bg-gradient-to-r', gradients[index % gradients.length])} />
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm text-muted-foreground">{metric.label}</span>
-        <div className={cn(
-          "flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full",
-          isUp && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
-          isDown && "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300",
-          !isUp && !isDown && "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-        )}>
+        <div
+          className={cn(
+            'flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full',
+            isUp && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
+            isDown && 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300',
+            !isUp && !isDown && 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+          )}
+        >
           {isUp && <ArrowUpRight className="h-3 w-3" />}
           {isDown && <ArrowDownRight className="h-3 w-3" />}
           {!isUp && !isDown && <Minus className="h-3 w-3" />}
-          {metric.change > 0 ? '+' : ''}{metric.change}%
+          {metric.change > 0 ? '+' : ''}
+          {metric.change}%
         </div>
       </div>
       <div className="text-3xl font-bold">{metric.value}</div>
+    </div>
+  );
+}
+
+/* ---------- Area Chart: Daily Search Volume ---------- */
+function SearchVolumeAreaChart({ data }: { data: DailySearchVolume[] }) {
+  return (
+    <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 p-6 shadow-xl">
+      <h3 className="text-lg font-semibold mb-1">Search Volume</h3>
+      <p className="text-sm text-muted-foreground mb-4">Daily searches over the last 30 days</p>
+      {data.length === 0 ? (
+        <p className="text-muted-foreground text-center py-16">No search data yet</p>
+      ) : (
+        <ResponsiveContainer width="100%" height={250}>
+          <AreaChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+            <defs>
+              <linearGradient id="searchGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 11, fill: '#9ca3af' }}
+              tickLine={false}
+              axisLine={false}
+              interval={4}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: '#9ca3af' }}
+              tickLine={false}
+              axisLine={false}
+              allowDecimals={false}
+            />
+            <Tooltip
+              contentStyle={{
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                fontSize: 13,
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="searches"
+              stroke="#06b6d4"
+              strokeWidth={2.5}
+              fill="url(#searchGradient)"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Pie Chart: Category Breakdown ---------- */
+function CategoryPieChart({ categories }: { categories: CategoryBreakdown[] }) {
+  const pieData = categories.slice(0, 8).map((c) => ({
+    name: c.category,
+    value: c.count,
+  }));
+
+  return (
+    <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 p-6 shadow-xl">
+      <h3 className="text-lg font-semibold mb-1">Category Breakdown</h3>
+      <p className="text-sm text-muted-foreground mb-4">Search distribution by category</p>
+      {pieData.length === 0 ? (
+        <p className="text-muted-foreground text-center py-16">No category data yet</p>
+      ) : (
+        <ResponsiveContainer width="100%" height={250}>
+          <PieChart>
+            <Pie
+              data={pieData}
+              cx="50%"
+              cy="50%"
+              innerRadius={55}
+              outerRadius={90}
+              paddingAngle={3}
+              dataKey="value"
+              stroke="none"
+            >
+              {pieData.map((_, i) => (
+                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={{
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                fontSize: 13,
+              }}
+              formatter={(value) => [`${value} searches`, 'Count']}
+            />
+            <Legend
+              verticalAlign="middle"
+              align="right"
+              layout="vertical"
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ fontSize: 12 }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Horizontal Bar Chart: Top Search Terms ---------- */
+function TopSearchTermsBarChart({ terms }: { terms: TopSearchTerm[] }) {
+  if (terms.length === 0) return null;
+
+  const chartData = [...terms].reverse().map((t) => ({
+    term: t.term.length > 25 ? t.term.slice(0, 22) + '...' : t.term,
+    count: t.count,
+  }));
+
+  return (
+    <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 p-6 shadow-xl">
+      <h3 className="text-lg font-semibold mb-1">Top Search Terms</h3>
+      <p className="text-sm text-muted-foreground mb-4">Most frequently searched queries</p>
+      <ResponsiveContainer width="100%" height={Math.max(terms.length * 40, 200)}>
+        <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} horizontal={false} />
+          <XAxis type="number" tick={{ fontSize: 11, fill: '#9ca3af' }} tickLine={false} axisLine={false} allowDecimals={false} />
+          <YAxis
+            type="category"
+            dataKey="term"
+            tick={{ fontSize: 12, fill: '#6b7280' }}
+            tickLine={false}
+            axisLine={false}
+            width={160}
+          />
+          <Tooltip
+            contentStyle={{
+              borderRadius: '12px',
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              fontSize: 13,
+            }}
+            formatter={(value) => [`${value} searches`, 'Count']}
+          />
+          <Bar dataKey="count" radius={[0, 6, 6, 0]} maxBarSize={28}>
+            {chartData.map((_, i) => (
+              <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/* ---------- Grouped Bar Chart: Platform Performance ---------- */
+/* ---------- Ranked List: Top Search Terms ---------- */
+function TopSearchTermsList({ terms }: { terms: TopSearchTerm[] }) {
+  if (terms.length === 0) return null;
+
+  return (
+    <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 overflow-hidden shadow-xl">
+      <div className="p-6 border-b border-gray-100 dark:border-white/10">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-1">Search Terms Ranking</h3>
+            <p className="text-sm text-muted-foreground">Top queries with category tags</p>
+          </div>
+          <Badge className="rounded-full bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/50 dark:text-fuchsia-300 border-0 gap-1">
+            <Search className="h-3 w-3" />
+            Top {terms.length}
+          </Badge>
+        </div>
+      </div>
+      <div className="divide-y divide-gray-100 dark:divide-white/10 max-h-[400px] overflow-y-auto">
+        {terms.map((term, i) => (
+          <div key={i} className="flex items-center justify-between px-6 py-3 hover:bg-muted/30 transition-colors">
+            <div className="flex items-center gap-4">
+              <span className="text-lg font-bold text-muted-foreground w-8">#{i + 1}</span>
+              <div>
+                <span className="font-medium">{term.term}</span>
+                {term.category && (
+                  <Badge variant="outline" className="ml-2 rounded-full text-xs">
+                    {term.category}
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <span className="text-sm font-semibold text-muted-foreground">{term.count} searches</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PlatformBarChart({ platforms }: { platforms: CompetitorData[] }) {
+  if (platforms.length === 0) return null;
+
+  return (
+    <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 overflow-hidden shadow-xl">
+      <div className="p-6 border-b border-gray-100 dark:border-white/10">
+        <h3 className="text-lg font-semibold mb-1">Platform Performance</h3>
+        <p className="text-sm text-muted-foreground">Product count and avg price by platform</p>
+      </div>
+      <div className="p-6">
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={platforms} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
+            <XAxis
+              dataKey="platform"
+              tick={{ fontSize: 12, fill: '#6b7280' }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              yAxisId="left"
+              tick={{ fontSize: 11, fill: '#9ca3af' }}
+              tickLine={false}
+              axisLine={false}
+              allowDecimals={false}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 11, fill: '#9ca3af' }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <Tooltip
+              contentStyle={{
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                fontSize: 13,
+              }}
+            />
+            <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+            <Bar yAxisId="left" dataKey="products" name="Products" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={50} />
+            <Bar yAxisId="right" dataKey="avgPrice" name="Avg Price ($)" fill="#06b6d4" radius={[6, 6, 0, 0]} maxBarSize={50} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Table below chart for details */}
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/30">
+            <TableHead>Platform</TableHead>
+            <TableHead>Products</TableHead>
+            <TableHead>Avg Price</TableHead>
+            <TableHead>Market Share</TableHead>
+            <TableHead>Avg Rating</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {platforms.map((p, i) => (
+            <TableRow key={i} className="hover:bg-muted/30 transition-colors">
+              <TableCell className="font-medium">{p.platform}</TableCell>
+              <TableCell>{p.products.toLocaleString()}</TableCell>
+              <TableCell>${p.avgPrice.toFixed(2)}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-3">
+                  <div className="w-24 h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                      style={{ width: `${p.marketShare}%` }}
+                    />
+                  </div>
+                  <span className="text-sm">{p.marketShare}%</span>
+                </div>
+              </TableCell>
+              <TableCell>{p.avgRating != null ? `${p.avgRating}/5` : '-'}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+/* ---------- User Activity Table ---------- */
+function UserActivityTable({ users }: { users: UserActivityItem[] }) {
+  return (
+    <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 p-6 shadow-xl">
+      <div className="flex items-center gap-2 mb-1">
+        <Users className="h-5 w-5 text-cyan-500" />
+        <h3 className="text-lg font-semibold">User Activity</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-5">Top users by search count</p>
+
+      {users.length === 0 ? (
+        <p className="text-muted-foreground text-center py-8">No user activity yet</p>
+      ) : (
+        <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+          {users.map((u, i) => (
+            <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-muted/30 hover:bg-muted/50 transition-colors">
+              <div className="min-w-0">
+                <p className="font-medium truncate">{u.email}</p>
+                <p className="text-xs text-muted-foreground">
+                  Last active: {new Date(u.lastActive).toLocaleDateString()}
+                </p>
+              </div>
+              <Badge variant="outline" className="rounded-full shrink-0 ml-3">
+                {u.searchCount} searches
+              </Badge>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Grouped Bar Chart: Price Insights ---------- */
+function PriceInsightsChart({ insights }: { insights: PriceInsight[] }) {
+  const chartData = insights.slice(0, 6).map((ins) => ({
+    category: ins.category.length > 15 ? ins.category.slice(0, 12) + '...' : ins.category,
+    min: ins.minPrice,
+    avg: ins.avgPrice,
+    max: ins.maxPrice,
+  }));
+
+  return (
+    <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 p-6 shadow-xl">
+      <div className="flex items-center gap-2 mb-1">
+        <DollarSign className="h-5 w-5 text-emerald-500" />
+        <h3 className="text-lg font-semibold">Price Insights</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">Min / Avg / Max price by category</p>
+
+      {chartData.length === 0 ? (
+        <p className="text-muted-foreground text-center py-16">No price data yet</p>
+      ) : (
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
+            <XAxis
+              dataKey="category"
+              tick={{ fontSize: 11, fill: '#6b7280' }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: '#9ca3af' }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <Tooltip
+              contentStyle={{
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                fontSize: 13,
+              }}
+              formatter={(value) => [`$${Number(value).toFixed(0)}`, '']}
+            />
+            <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+            <Bar dataKey="min" name="Min Price" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
+            <Bar dataKey="avg" name="Avg Price" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={30} />
+            <Bar dataKey="max" name="Max Price" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={30} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }
