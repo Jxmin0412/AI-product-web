@@ -13,14 +13,6 @@ import { businessApi } from '../api/business.api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   BarChart3,
   Minus,
   Calendar,
@@ -30,7 +22,7 @@ import {
   Loader2,
   AlertCircle,
   Users,
-  Search,
+  Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -156,14 +148,11 @@ export default function BusinessDashboard() {
           <CategoryPieChart categories={data.categoryBreakdown} />
         </div>
 
-        {/* Charts Row 2: Top Search Terms — bar chart + ranked list */}
+        {/* Charts Row 2: Top Search Terms + Platform Access Distribution */}
         <div className="grid lg:grid-cols-2 gap-6">
           <TopSearchTermsBarChart terms={data.topSearchTerms} />
-          <TopSearchTermsList terms={data.topSearchTerms} />
+          <PlatformAccessPieChart platforms={data.platformPerformance} />
         </div>
-
-        {/* Charts Row 3: Platform Performance Bar Chart */}
-        <PlatformBarChart platforms={data.platformPerformance} />
 
         {/* Bottom Grid: User Activity Table + Price Insights Chart */}
         <div className="grid lg:grid-cols-2 gap-6">
@@ -365,80 +354,47 @@ function TopSearchTermsBarChart({ terms }: { terms: TopSearchTerm[] }) {
   );
 }
 
-/* ---------- Grouped Bar Chart: Platform Performance ---------- */
-/* ---------- Ranked List: Top Search Terms ---------- */
-function TopSearchTermsList({ terms }: { terms: TopSearchTerm[] }) {
-  if (terms.length === 0) return null;
+/* ---------- Donut Chart: Platform Access Distribution ---------- */
+function PlatformAccessPieChart({ platforms }: { platforms: CompetitorData[] }) {
+  const pieData = platforms.map((p) => ({
+    name: p.platform,
+    value: p.products,
+    share: p.marketShare,
+  }));
+
+  const PLATFORM_COLORS = [
+    '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899',
+    '#10b981', '#ef4444', '#6366f1', '#14b8a6',
+  ];
 
   return (
-    <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 overflow-hidden shadow-xl">
-      <div className="p-6 border-b border-gray-100 dark:border-white/10">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold mb-1">Search Terms Ranking</h3>
-            <p className="text-sm text-muted-foreground">Top queries with category tags</p>
-          </div>
-          <Badge className="rounded-full bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/50 dark:text-fuchsia-300 border-0 gap-1">
-            <Search className="h-3 w-3" />
-            Top {terms.length}
-          </Badge>
-        </div>
+    <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 p-6 shadow-xl">
+      <div className="flex items-center gap-2 mb-1">
+        <Globe className="h-5 w-5 text-amber-500" />
+        <h3 className="text-lg font-semibold">Platforms Accessed</h3>
       </div>
-      <div className="divide-y divide-gray-100 dark:divide-white/10 max-h-[400px] overflow-y-auto">
-        {terms.map((term, i) => (
-          <div key={i} className="flex items-center justify-between px-6 py-3 hover:bg-muted/30 transition-colors">
-            <div className="flex items-center gap-4">
-              <span className="text-lg font-bold text-muted-foreground w-8">#{i + 1}</span>
-              <div>
-                <span className="font-medium">{term.term}</span>
-                {term.category && (
-                  <Badge variant="outline" className="ml-2 rounded-full text-xs">
-                    {term.category}
-                  </Badge>
-                )}
-              </div>
-            </div>
-            <span className="text-sm font-semibold text-muted-foreground">{term.count} searches</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function PlatformBarChart({ platforms }: { platforms: CompetitorData[] }) {
-  if (platforms.length === 0) return null;
-
-  return (
-    <div className="rounded-3xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/10 overflow-hidden shadow-xl">
-      <div className="p-6 border-b border-gray-100 dark:border-white/10">
-        <h3 className="text-lg font-semibold mb-1">Platform Performance</h3>
-        <p className="text-sm text-muted-foreground">Product count and avg price by platform</p>
-      </div>
-      <div className="p-6">
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={platforms} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
-            <XAxis
-              dataKey="platform"
-              tick={{ fontSize: 12, fill: '#6b7280' }}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis
-              yAxisId="left"
-              tick={{ fontSize: 11, fill: '#9ca3af' }}
-              tickLine={false}
-              axisLine={false}
-              allowDecimals={false}
-            />
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              tick={{ fontSize: 11, fill: '#9ca3af' }}
-              tickLine={false}
-              axisLine={false}
-            />
+      <p className="text-sm text-muted-foreground mb-4">Search result distribution by platform</p>
+      {pieData.length === 0 ? (
+        <p className="text-muted-foreground text-center py-16">No platform data yet</p>
+      ) : (
+        <ResponsiveContainer width="100%" height={280}>
+          <PieChart>
+            <Pie
+              data={pieData}
+              cx="50%"
+              cy="50%"
+              innerRadius={60}
+              outerRadius={100}
+              paddingAngle={3}
+              dataKey="value"
+              stroke="none"
+              label={({ name, share }) => `${name} (${share}%)`}
+              labelLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
+            >
+              {pieData.map((_, i) => (
+                <Cell key={i} fill={PLATFORM_COLORS[i % PLATFORM_COLORS.length]} />
+              ))}
+            </Pie>
             <Tooltip
               contentStyle={{
                 borderRadius: '12px',
@@ -446,47 +402,21 @@ function PlatformBarChart({ platforms }: { platforms: CompetitorData[] }) {
                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                 fontSize: 13,
               }}
+              formatter={(value, _name, entry) => [
+                `${value} products (${entry.payload.share}%)`,
+                'Platform',
+              ]}
             />
-            <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-            <Bar yAxisId="left" dataKey="products" name="Products" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={50} />
-            <Bar yAxisId="right" dataKey="avgPrice" name="Avg Price ($)" fill="#06b6d4" radius={[6, 6, 0, 0]} maxBarSize={50} />
-          </BarChart>
+            <Legend
+              verticalAlign="bottom"
+              align="center"
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
+            />
+          </PieChart>
         </ResponsiveContainer>
-      </div>
-
-      {/* Table below chart for details */}
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/30">
-            <TableHead>Platform</TableHead>
-            <TableHead>Products</TableHead>
-            <TableHead>Avg Price</TableHead>
-            <TableHead>Market Share</TableHead>
-            <TableHead>Avg Rating</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {platforms.map((p, i) => (
-            <TableRow key={i} className="hover:bg-muted/30 transition-colors">
-              <TableCell className="font-medium">{p.platform}</TableCell>
-              <TableCell>{p.products.toLocaleString()}</TableCell>
-              <TableCell>${p.avgPrice.toFixed(2)}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <div className="w-24 h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
-                      style={{ width: `${p.marketShare}%` }}
-                    />
-                  </div>
-                  <span className="text-sm">{p.marketShare}%</span>
-                </div>
-              </TableCell>
-              <TableCell>{p.avgRating != null ? `${p.avgRating}/5` : '-'}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      )}
     </div>
   );
 }

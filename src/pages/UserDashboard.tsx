@@ -181,12 +181,12 @@ export default function UserDashboard() {
           </div>
         )}
 
-        {/* Search Results */}
+        {/* Search Result — show only the top recommendation to save AI tokens */}
         {searchResults.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Search Results</h2>
-              <Badge variant="secondary" className="rounded-full px-4">{searchResults.length} found</Badge>
+              <h2 className="text-2xl font-bold">Best Match</h2>
+              <Badge variant="secondary" className="rounded-full px-4">Top Result</Badge>
             </div>
 
             {/* Demo data notice */}
@@ -200,14 +200,12 @@ export default function UserDashboard() {
               </div>
             )}
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {searchResults.map((product, index) => (
-                <ProductCard
-                  key={product.id || index}
-                  product={product}
-                  onComparePrice={() => handleComparePrice(product)}
-                />
-              ))}
+            <div className="max-w-md mx-auto">
+              <ProductCard
+                key={searchResults[0].id || 0}
+                product={searchResults[0]}
+                onComparePrice={() => handleComparePrice(searchResults[0])}
+              />
             </div>
           </section>
         )}
@@ -407,7 +405,7 @@ function PriceComparisonDialog({
             <p className="text-muted-foreground">Fetching prices from multiple platforms...</p>
           </div>
         ) : comparisonData && comparisonData.comparisons.length > 0 ? (
-          <>
+          <div className="flex flex-col gap-4">
             <div className="rounded-2xl border overflow-hidden">
               <Table>
                 <TableHeader>
@@ -421,7 +419,12 @@ function PriceComparisonDialog({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {comparisonData.comparisons.map((platform, index) => (
+                  {[...comparisonData.comparisons].sort((a, b) => {
+                    const priority: Record<string, number> = { 'Amazon': 0, 'Vijay Sales': 1, 'Snapdeal': 2, 'ShopClues': 3 };
+                    const pa = priority[a.platform] ?? 99;
+                    const pb = priority[b.platform] ?? 99;
+                    return pa - pb;
+                  }).map((platform, index) => (
                     <TableRow
                       key={index}
                       className={platform.isBestDeal ? "bg-emerald-50/50 dark:bg-emerald-950/20" : ""}
@@ -512,7 +515,7 @@ function PriceComparisonDialog({
                 </div>
               </div>
             )}
-          </>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Package className="h-12 w-12 text-muted-foreground/50 mb-4" />
